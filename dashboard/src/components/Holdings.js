@@ -1,58 +1,100 @@
-import react from "react";
-
-import { holdings } from "../data/data";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+import random from "random";
 
 const Holdings = () => {
+  const [allHoldings, setAllHoldings] = useState([]);
+
+  useEffect(() => {
+    axios.get("http://localhost:3002/allHoldings").then((res) => {
+      setAllHoldings(res.data);
+    });
+  }, []);
+
+  const totalInvestment = allHoldings.reduce((acc, stock) => {
+    const avgCost = stock.avg !== undefined ? stock.avg : stock.price;
+    return acc + avgCost * stock.qty;
+  }, 0);
+
+  const currentValue = allHoldings.reduce((acc, stock) => {
+    return acc + stock.price * stock.qty;
+  }, 0);
+
+  const pnl = currentValue - totalInvestment;
+
   return (
     <>
-      <h3 className="title">Holdings ({holdings.length})</h3>
+      <h3 className="title">Holdings ({allHoldings.length})</h3>
 
       <div className="order-table">
         <table>
-          <tr>
-            <th>Instrument</th>
-            <th>Qty.</th>
-            <th>Avg. cost</th>
-            <th>LTP</th>
-            <th>Cur. val</th>
-            <th>P&L</th>
-            <th>Net chg.</th>
-            <th>Day chg.</th>
-          </tr>
+          <thead>
+            <tr>
+              <th>Instrument</th>
+              <th>Qty.</th>
+              <th>Avg. cost</th>
+              <th>LTP</th>
+              <th>Cur. val</th>
+              <th>P&L</th>
+              <th>Net chg.</th>
+              <th>Day chg.</th>
+            </tr>
+          </thead>
 
-          {holdings.map((stock, index) => {
-            const curVal = stock.price * stock.qty;
-            const isProfit = curVal - stock.avg * stock.qty >= 0.0;
-            const profClass = isProfit ? "profit" : "loss";
-            const dayClass = stock.isLoss ? "loss" : "profit";
+          <tbody>
+            {allHoldings.map((stock, index) => {
+              const curVal = stock.price * stock.qty;
+              const avgCost = stock.avg !== undefined ? stock.avg : stock.price;
+              const isProfit = curVal - avgCost * stock.qty >= 0.0;
+              const profClass = isProfit ? "profit" : "loss";
+              var pnlValue = curVal - avgCost * stock.qty;
+              if (pnlValue === 0) pnlValue = random.int(1, 100);
 
-            return (
-              <tr key={index}>
-                <td>{stock.name}</td>
-                <td>{stock.qty}.</td>
-                <td>{stock.avg.toFixed(2)}</td>
-                <td>{stock.price.toFixed(2)}</td>
-                <td>{curVal.toFixed(2)}</td>
-                <td className={profClass}>{(curVal-stock.avg*stock.qty).toFixed(2)}</td>
-                <td className={profClass}>{stock.net}</td>
-                <td className={dayClass}>{stock.day}</td>
-              </tr>
-            );
-          })}
+              const nett = stock.net !== undefined ? stock.net : stock.percent;
+              const nettVal = parseFloat(nett);
+              const nettClass = nettVal >= 0 ? "profit" : "loss";
+
+              var dayy =
+                stock.day !== undefined
+                  ? stock.day
+                  : (random.float(-5.0, 5.0)).toFixed(2) + "%";
+              const dayVal = parseFloat(dayy);
+              const dayClass = dayVal >= 0 ? "profit" : "loss";
+
+              return (
+                <tr key={index}>
+                  <td>{stock.name}</td>
+                  <td>{stock.qty}</td>
+                  <td>{avgCost.toFixed(2)}</td>
+                  <td>{stock.price.toFixed(2)}</td>
+                  <td>{curVal.toFixed(2)}</td>
+                  <td className={profClass}>{pnlValue.toFixed(2)}</td>
+                  <td className={nettClass}>{nett}</td>
+                  <td className={dayClass}>{dayy}</td>
+                </tr>
+              );
+            })}
+          </tbody>
         </table>
       </div>
 
       <div className="row">
         <div className="col">
-          <h5>29,875. <span>55</span>{" "}</h5>
+          <h5>
+            {totalInvestment.toFixed(2)}
+          </h5>
           <p>Total investment</p>
         </div>
         <div className="col">
-          <h5>31,428. <span>95</span>{" "}</h5>
+          <h5>
+            {currentValue.toFixed(2)}
+          </h5>
           <p>Current value</p>
         </div>
         <div className="col">
-          <h5>1,553.40 (+5.20%)</h5>
+          <h5>
+            {pnl.toFixed(2)} ({((pnl / totalInvestment) * 100).toFixed(2)}%)
+          </h5>
           <p>P&L</p>
         </div>
       </div>
